@@ -19,7 +19,7 @@ class Editor:
         part2 = VideoFileClip(self.name).subclip(start, end)
         part2 = part2.fx(vfx.time_mirror)
         stacked = concatenate_videoclips([part1, part2])
-        result = stacked.fl_time(lambda t : t*speed)
+        result = stacked.fl_time(lambda t: t*speed)
         result.duration = (part1.duration+part2.duration)/speed
         sound1 = AudioFileClip("sound1.mp3")
         print(sound1.duration - part1.duration/speed)

@@ -1,7 +1,8 @@
 import os
+import time
 import cv2
 import numpy as np
-# import matplotlib.pyplot as plt
+
 
 def nothing(para):
     pass
@@ -59,10 +60,12 @@ class Dolly:
         self.tracker = Track(self.cap, self.seconds)
         self.initial = None
         self.p = None
+        self.w = 2560
+        self.h = 1440
 
     def reverse_video(self):
         print("reversal start")
-        out = cv2.VideoWriter(self.rev_name, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), 30, (1500, 750))
+        out = cv2.VideoWriter(self.rev_name, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), 30, (self.w, self.h))
         frames = []
         for _ in range(self.seconds):
             self.cap.read()
@@ -70,7 +73,7 @@ class Dolly:
             ret, frame = self.cap.read()
             if ret is False:
                 break
-            frame = cv2.resize(frame, (1500, 750))
+            frame = cv2.resize(frame, (self.w, self.h))
             frames.append(frame)
         frames.reverse()
         for frame in frames:
@@ -89,12 +92,12 @@ class Dolly:
         # plt.show()
 
     def apply_zoom(self):
-        out = cv2.VideoWriter('res.mp4', cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), 30, (1500, 750))
+        out = cv2.VideoWriter('res.mp4', cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), 30, (self.w, self.h))
         self.cap = cv2.VideoCapture(self.rev_name)
         for _ in range(self.seconds):
             self.cap.read()
-        w = 1500
-        h = 750
+        w = self.w
+        h = self.h
         frames = []
         while 1:
             ret, frame = self.cap.read()
@@ -102,7 +105,6 @@ class Dolly:
                 break
             frame = cv2.resize(frame, (w, h))
             frames.append(frame)
-        i = 0
         cv2.namedWindow('frame')
         # cv2.createTrackbar('num', 'frame', 0, len(frames)-1, nothing)
         for (i, frame) in enumerate(frames):
@@ -111,7 +113,7 @@ class Dolly:
             # i = cv2.getTrackbarPos('num', 'frame')
             # frame = frames[i]
             # print(scale)
-            scale = 1 + self.p(i) / 10  # yeh 10 kaise decide karenge
+            scale = 1 + self.p(i) / 10  # How to decide this 10
             m = cv2.getRotationMatrix2D((w//2, h//2), 0, scale)
             frame = cv2.warpAffine(frame, m, (w, h))
             # frame = cv2.resize(frame, (640, 480))
@@ -122,8 +124,10 @@ class Dolly:
 
 
 if __name__ == '__main__':
-    obj = Dolly(45, 'out.mp4')
+    s = time.time()
+    obj = Dolly(45, 'satinder.mp4')
     obj.get_scales()
     obj.apply_zoom()
+    print(time.time()-s)
    
 
