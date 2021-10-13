@@ -1,6 +1,7 @@
 # sound and video files
 *.mp3
 *.mp4
+*.MP4
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
