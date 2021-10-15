@@ -14,19 +14,20 @@ def main(sqs_utils, s3_utils):
             continue
         try:
             # Download the video
+            # print(message)
             video_key = message['video_key']
             skip_frames = message.get('skip_frames', 0)
             local_file = s3_utils.download_file(video_key)
             with DollyZoom(local_file, skip_frames) as dolly_zoom:
                 processed_video_path = dolly_zoom.process()
-            s3_utils.upload_file(processed_video_path)
+            s3_utils.upload_file(processed_video_path, is_processed=True)
             os.remove(local_file)
             os.remove(processed_video_path)
 
         except Exception as e:
             logging.info("failed to process video")
             logging.exception(e)
-            pass
+
         finally:
             logging.info("==============================================")
 
