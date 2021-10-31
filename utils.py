@@ -9,8 +9,9 @@ from sqlalchemy import create_engine
 
 class SQSUtils:
     def __init__(self):
+        os.environ["BOTO_CONFIG"] = "aws_config"   # Find a fix for this.
         region = "ap-south-1"
-        queue_name = 'vertigo-effect-creator'
+        queue_name = 'sauider-dolly-zoom'
         self.sqs_client = boto3.client('sqs', region_name=region)
         sqs_resource_handle = boto3.resource('sqs', region_name=region)
         queue = sqs_resource_handle.get_queue_by_name(QueueName=queue_name)
@@ -27,7 +28,8 @@ class SQSUtils:
 
     def get_message_from_queue(self):
         """Receive message from queue"""
-        msg = self.sqs_client.receive_message(QueueUrl=self.queue_url)
+        msg = self.sqs_client.receive_message(QueueUrl=self.queue_url, MaxNumberOfMessages=1,
+                                              VisibilityTimeout=600)
         if 'Messages' in msg:
             msg = msg['Messages'][0]
             # TODO: compute the md5 of message to check if there is some problem with the message.
@@ -38,12 +40,13 @@ class SQSUtils:
     def delete_message(self, receipt_handler):
         response = self.sqs_client.delete_message(QueueUrl=self.queue_url,
                                                   ReceiptHandle=receipt_handler)
+        print("message deleted")
         print(response)  # How to know if this was successful.
 
 
 class S3Utils:
     def __init__(self):
-        self.s3_bucket = 'vertigo-effect'
+        self.s3_bucket = 'sauider-dolly-zoom'
         self.s3_client = boto3.client('s3')
         self.video_upload_path_base = 'vertigo_effect/{}/{}/{}'
 
@@ -97,14 +100,14 @@ class DBUtils:
 if __name__ == '__main__':
     obj = DBUtils()
     obj.execute_query("insert into join1 values(3, 4)")
-    # obj = SQSUtils()
+    obj = S3Utils()
     # obj.download_file('data/test.mp4')
-    # obj.upload_file('test.mp4')
-    # obj = MessageHandler()
+    obj.upload_file('test.mp4')
+    obj = SQSUtils()
     # sender, box coordinates, box coordinates image resolution,
-    # data = {'video_key': 'data/test.mp4'}
-    # if obj.send_message_to_sqs(data):
-    #     print("successfully sent a message")
+    data = {'video_key': 'data/test.mp4'}
+    if obj.send_message_to_sqs(data):
+        print("successfully sent a message")
     # print("sleep for 10 seconds")
     # time.sleep(10)
     # receipt_handle, msg_body = obj.get_message_from_queue()

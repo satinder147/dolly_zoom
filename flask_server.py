@@ -6,7 +6,6 @@ import json
 from redis import Redis
 from utils import S3Utils, SQSUtils, DBUtils
 
-
 redis_db, s3_utils, sqs_utils, db_utils = Redis(), S3Utils(), SQSUtils(), DBUtils
 app = Flask(__name__)
 
@@ -19,26 +18,19 @@ def callback():
     message-processor-machine posts success/fail message message
     {
         'status': success/fail,
-        'video_path': url,
+        'video_key': url,
         'request_id': uuid
-        'video_decoding_time': ,
-        'transform calculation': ,
-        'video_encoding':
-        'total_time':
-        'video_width':
-        'video_height':
     }
     """
-    video_key, request_id = request['video_key'], request['request_id']
-    # This information will be stored in a redis database, each entry is store for at max 2 hours
+    request_id, status = request.form['request_id'], request.form['status']
+    # This information will be stored in a redis database, each entry is store for at max 24 hours
     # in the redis db, post which it is deleted.
-    presigned_s3_path = s3_utils.get_presigned_url(video_key)
-    query = """insert into request_stats({request_id}, {video_decoding_time},
-               {transform_calculation_time}, {video_encoding_time}, {total_time},
-               {video_width}, {video_height}""".format(**request.form)
-    db_utils.register_request_to_db(query)
+    if status == 'success':
+        presigned_s3_path = s3_utils.get_presigned_url(request.form['video_key'])
+    else:
+        presigned_s3_path = 'failed'
     # After call back user has 24 hours to download the video
-    redis_db.set(request_id, presigned_s3_path, ex = 86400)
+    redis_db.set(request_id, presigned_s3_path, ex=86400)
     return 'success'
 
 
@@ -57,27 +49,36 @@ def get_video():
         # The video is no longer there.
         return json.dumps({'status': 'video_removed'})
     else:
-        if result == 'dummy':
+        if result == 'processing':
             return json.dumps({'status': 'processing'})
+        elif result == 'failed':
+            return json.dumps({'status': 'failed'})
         else:
-            return json.dumps({'status': 'processed', 'url': result})
+            return json.dumps({'status': 'processed', 'url': result.decode('UTF-8')})
 
 
 @app.route('/upload', methods=['POST'])
 def upload_video():
     request_id = str(int(datetime.utcnow().timestamp())) + uuid.uuid4().hex[:22]
-    uploaded_file = request.files['file']
-
+    uploaded_file = request.files['video']
+    x, y, w, h = request.form['x'], request.form['y'], request.form['width'], request.form['height']
+    skip_frames = request.form['skip_frames']
     file_name = uploaded_file.filename
     if file_name != '':
         uploaded_file.save(file_name)
     # Add the request id to redis.
-    redis_db.set(request_id, 'dummy')
+    redis_db.set(request_id, 'processing')
     # Upload video to s3
     upload_path = s3_utils.upload_file(file_name, is_processed=False)
     os.remove(file_name)
     # Add message to queue
-    message = {'request_id': request_id, 'video_key': upload_path}
+    message = {
+        'request_id': request_id,
+        'video_key': upload_path,
+        'request_time': str(datetime.utcnow()).split('.')[0],
+        'skip_frames': skip_frames,
+        'bbox': [x, y, w, h]
+    }
     sqs_utils.send_message_to_sqs(message)
 
     return json.dumps(

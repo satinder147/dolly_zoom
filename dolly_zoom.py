@@ -3,19 +3,20 @@ import logging
 import numpy as np
 from tqdm import tqdm
 import time
-import matplotlib.pyplot as plt
-import boto3
 
 
 class Track:
-    def __init__(self, first_frame):
+    def __init__(self, first_frame, box):
         frame = first_frame
         cv2.namedWindow("select the bounding box")
         box = cv2.selectROI("select the bounding box", frame)
         cv2.imshow("select the bounding box", frame)
+        print(type(box))
+        print(type(box[0]), type(box[1]), type(box[2]), type(box[3]))
         self.x, self.y, self.w, self.h = box
+        print(self.x, self.y, self.w, self.h)
         self.tracker = cv2.TrackerCSRT_create()
-        self.tracker.init(frame, box)
+        self.tracker.init(frame, tuple(box))
         self.initial = box[2] * box[3]
         self.ind = 0
 
@@ -26,9 +27,9 @@ class Track:
         self.ind += 1
         frame = cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 2)
         center_point = [x + w // 2, y + h // 2]
-        frame = cv2.circle(frame, (center_point[0], center_point[1]), 5, (255, 0, 0))
-        cv2.imshow("frame", frame)
-        cv2.waitKey(1)
+        # frame = cv2.circle(frame, (center_point[0], center_point[1]), 5, (255, 0, 0))
+        # cv2.imshow("frame", frame)
+        # cv2.waitKey(1)
         return self.ind, self.initial / (w * h), center_point
 
 
@@ -39,7 +40,7 @@ class DollyZoom:
         # Video resolution must be at least 1080p
         out_res_mapping = {3840: 1920, 2560: 1920, 1920: 1280}
         width_height_mapping = {3840: 2160, 2560: 1440, 1920: 1080, 1280: 720}
-        self.smoothing_radius = 100
+        self.smoothing_radius = 150
         self.video_path = video_path
         self.cap = cv2.VideoCapture(self.video_path)
         self.n_frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -49,7 +50,7 @@ class DollyZoom:
         self.h = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         self.fps = self.cap.get(cv2.CAP_PROP_FPS)
         self.out_path = video_path.split('.')[0] + '_stabilized' + '.mp4'
-        self.out_resolution = (out_res_mapping[self.w], width_height_mapping[out_res_mapping[self.w]])
+        self.out_resolution = (1280, 720)
         self.processing_resolution = (1280, 720)
 
     def __enter__(self):
@@ -58,7 +59,7 @@ class DollyZoom:
     def __exit__(self, exc_type, exc_val, exc_tb):
         pass
 
-    def process(self):
+    def process(self, box):
 
         # We need to find a code that does some lossy compression.
         out = cv2.VideoWriter(self.out_path, cv2.VideoWriter_fourcc(*'MJPG'), self.fps, self.out_resolution)
@@ -73,11 +74,12 @@ class DollyZoom:
 
         frames = frames[::-1]
         frames = frames[self.skip_frames:]
+        video_decoding_time = time.time() - s
         prev_gray = cv2.cvtColor(frames[0], cv2.COLOR_BGR2GRAY)
         prev_gray = cv2.resize(prev_gray, self.processing_resolution)
-        print("Got all frames in {} seconds".format(time.time() - s))
+        s = time.time()
         transforms = np.zeros((self.n_frames, 3), np.float32)
-        tracker = Track(prev_gray)
+        tracker = Track(prev_gray, box)
         zoom_details = []
         for i in tqdm(range(1, self.n_frames - 1)):
             # Detect feature points in previous frame
@@ -88,7 +90,7 @@ class DollyZoom:
                                                blockSize=3)
 
             curr_gray = cv2.cvtColor(frames[i], cv2.COLOR_BGR2GRAY)
-            curr_gray= cv2.resize(curr_gray, self.processing_resolution)
+            curr_gray = cv2.resize(curr_gray, self.processing_resolution)
             zoom_details.append(tracker.track(curr_gray))
             curr_pts, status, err = cv2.calcOpticalFlowPyrLK(prev_gray, curr_gray, prev_pts, None)
 
@@ -114,7 +116,6 @@ class DollyZoom:
 
         # Reset stream to first frame
         self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
-
         arr_x, arr_y, centers = zip(*zoom_details)
         x, y = np.array(arr_x), np.array(arr_y)
         # plt.scatter(x, y)
@@ -124,7 +125,10 @@ class DollyZoom:
         # n_y = function(x)
         # plt.scatter(x, n_y)
         # plt.show()
+        transform_calculation_time = time.time() - s
+        s = time.time()
         rate = 2
+        prev = None
         for i in tqdm(range(1, self.n_frames - 1)):
             frame = frames[i]
             # frame = cv2.resize(frame, (1920, 1080))
@@ -143,28 +147,37 @@ class DollyZoom:
             m[1, 2] = dy
             m[2, 2] = 1
             zoom = function(i)
-            zoom_area = ((centers[i-1][0] / self.processing_resolution[0]) * self.out_resolution[0],
-                         (centers[i-1][1] / self.processing_resolution[1]) * self.out_resolution[1])
-            zoom_matrix = cv2.getRotationMatrix2D(zoom_area, 0, 1 + zoom / 10)
-            m2 = np.zeros((3, 3), np.float32)
-            m2[0, 0] = zoom_matrix[0, 0]
-            m2[0, 1] = zoom_matrix[0, 1]
-            m2[1, 0] = zoom_matrix[1, 0]
-            m2[1, 1] = zoom_matrix[1, 1]
-            m2[0, 2] = zoom_matrix[0, 2]
-            m2[1, 2] = zoom_matrix[1, 2]
-            m2[2, 2] = 1
-            m = np.dot(m, m2)
-            m = m[:2, :3]
-            # Apply affine wrapping to the given frame
+            if zoom >= 0:
+                # print("within")
+                updated_scale = 1 + zoom / 10
+                if updated_scale > 3:
+                    break
+                zoom_area = ((centers[i-1][0] / self.processing_resolution[0]) * self.out_resolution[0],
+                             (centers[i-1][1] / self.processing_resolution[1]) * self.out_resolution[1])
+                zoom_matrix = cv2.getRotationMatrix2D(zoom_area, 0, updated_scale)
+                m2 = np.zeros((3, 3), np.float32)
+                m2[0, 0] = zoom_matrix[0, 0]
+                m2[0, 1] = zoom_matrix[0, 1]
+                m2[1, 0] = zoom_matrix[1, 0]
+                m2[1, 1] = zoom_matrix[1, 1]
+                m2[0, 2] = zoom_matrix[0, 2]
+                m2[1, 2] = zoom_matrix[1, 2]
+                m2[2, 2] = 1
+                m = np.dot(m, m2)
+                m = m[:2, :3]
+                # Apply affine wrapping to the given frame
 
-            if i % 180 == 1:
-                rate *= 2
-            if i % rate == 1:
+                # if i % 180 == 1:
+                #     rate *= 2
+                # if i % rate == 1:
+                # print("wrote")
                 frame_stabilized = cv2.warpAffine(frame, m, self.out_resolution)
                 out.write(frame_stabilized)
+
         out.release()
-        return self.out_path
+        video_encoding_time = time.time() - s
+        return self.out_path, video_decoding_time, transform_calculation_time,\
+               video_encoding_time, self.w, self.h, self.fps
 
     @staticmethod
     def moving_average(curve, radius):
@@ -193,8 +206,8 @@ class DollyZoom:
 
 
 if __name__ == '__main__':
-    obj = DollyZoom('C0012.MP4', 220)
-    obj.process()
+    obj = DollyZoom('media/VID_20211018_180515.mp4', 0)
+    obj.process([1, 2, 3, 4])
 
 
 # Decrease disk reads

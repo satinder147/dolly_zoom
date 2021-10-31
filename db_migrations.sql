@@ -9,5 +9,7 @@ CREATE TABLE request_stats(
         video_width SMALLINT,
         video_height SMALLINT,
         status VARCHAR,
+        fps SMALLINT,
+
         PRIMARY KEY(request_id)
 );
