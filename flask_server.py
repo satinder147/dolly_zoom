@@ -90,7 +90,7 @@ def upload_video():
     if len(file_name.split('.')) != 2:
         abort(400)
     _, ext = file_name.split('.')
-    random_file_name = str(uuid.uuid4().hex) + ext
+    random_file_name = str(uuid.uuid4().hex) + "." + ext
     uploaded_file.save(random_file_name)
     if not video_validator(random_file_name):
         abort(415)

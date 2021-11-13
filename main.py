@@ -9,7 +9,7 @@ from botocore.exceptions import EndpointConnectionError
 
 from logging_init import initialize_logging
 
-call_back_url = "http://localhost:5000/callback"
+call_back_url = "http://13.233.212.77:5005/callback"
 
 logger = logging.getLogger(__name__)
 
