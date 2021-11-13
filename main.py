@@ -6,6 +6,9 @@ from utils import SQSUtils, S3Utils
 from dolly_zoom import DollyZoom
 from datetime import datetime
 from botocore.exceptions import EndpointConnectionError
+
+from logging_init import initialize_logging
+
 call_back_url = "http://localhost:5000/callback"
 
 logger = logging.getLogger(__name__)
@@ -44,8 +47,8 @@ def main(sqs_utils, s3_utils):
             call_back['status'] = 'success'
             call_back['video_key'] = video_key
         except Exception as e:
-            logging.info("failed to process video")
-            logging.exception(e)
+            logger.info("failed to process video")
+            logger.exception(e)
 
         finally:
             if local_file and os.path.exists(local_file):
@@ -58,11 +61,12 @@ def main(sqs_utils, s3_utils):
             call_back['total_time'] = total_time
             logger.info(call_back)
             r = requests.post(call_back_url, call_back)
-            logger("callback status {}".format(r.status_code))
-            logging.info("==============================================")
+            logger.info("callback status {}".format(r.status_code))
+            logger.info("==============================================")
 
 
 if __name__ == "__main__":
+    initialize_logging(logger, logging.INFO)
     while 1:
         try:
             sqs_util = SQSUtils()

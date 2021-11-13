@@ -7,6 +7,11 @@ from datetime import datetime
 import configparser
 from sqlalchemy import create_engine
 
+from logging_init import initialize_logging
+
+logger = logging.getLogger(__name__)
+initialize_logging(logger, logging.INFO)
+
 config = configparser.ConfigParser()
 config.read('config')
 
@@ -16,12 +21,12 @@ class SQSUtils:
         # os.environ["BOTO_CONFIG"] = "aws_config"   # Find a fix for this.
         region = config['sqs']['region']
         queue_name = config['sqs']['queue_name']
-        self.visibility_timeout = config['sqs']['visibility_timeout']
+        self.visibility_timeout = int(config['sqs']['visibility_timeout'])
         self.sqs_client = boto3.client('sqs', region_name=region)
         sqs_resource_handle = boto3.resource('sqs', region_name=region)
         queue = sqs_resource_handle.get_queue_by_name(QueueName=queue_name)
         self.queue_url = queue.url
-        logging.info("Queue URL: %s", self.queue_url)
+        logger.info("Queue URL: %s", self.queue_url)
 
     def send_message_to_sqs(self, data):
         """push message to SQS"""
@@ -29,7 +34,7 @@ class SQSUtils:
             self.sqs_client.send_message(QueueUrl=self.queue_url, MessageBody=json.dumps(data))
             return True
         except Exception as e:
-            logging.exception(e)
+            logger.exception(e)
 
     def get_message_from_queue(self):
         """Receive message from queue"""
@@ -45,8 +50,8 @@ class SQSUtils:
     def delete_message(self, receipt_handler):
         response = self.sqs_client.delete_message(QueueUrl=self.queue_url,
                                                   ReceiptHandle=receipt_handler)
-        print("message deleted")
-        print(response)  # How to know if this was successful.
+        logger.info("message deleted")
+        # print(response)  # How to know if this was successful.
 
 
 class S3Utils:
@@ -60,7 +65,7 @@ class S3Utils:
         today = str(datetime.utcnow().date())
         s3_upload_path = self.video_upload_path_base.format(today, processed, local_file)
         self.s3_client.upload_file(local_file, self.s3_bucket, s3_upload_path)
-        logging.info("Successfully uploaded the video")
+        logger.info("Successfully uploaded the video")
         return s3_upload_path
 
     def download_file(self, file_key):
@@ -68,7 +73,7 @@ class S3Utils:
         local_file = file_key.split('/')[-1]
         self.s3_client.download_file(self.s3_bucket, file_key, local_file)
         if os.path.exists(local_file):
-            logging.info("successfully downloaded the file")
+            logger.info("successfully downloaded the file")
             return local_file
         else:
             raise ValueError('Failed to download video')
@@ -115,5 +120,6 @@ if __name__ == '__main__':
     # print("deleted message")
 
     """
-    nginx, supervisor, logging, automatic device startup, database addition, bash script to setup the machine., credentials storage.   
+    nginx, supervisor, logging, automatic device startup, database addition, bash script to 
+    setup the machine., credentials storage.   
     """

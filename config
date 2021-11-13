@@ -6,16 +6,21 @@ max_file_size=200
 expiry=24*60*60
 
 [sqs]
-region="ap-south-1"
-queue_name="sauider-dolly-zoom"
+region=ap-south-1
+queue_name=sauider-dolly-zoom
 visibility_timeout=300
 
 [s3]
-bucket_name="sauider-dolly-zoom"
+bucket_name=sauider-dolly-zoom
 
 [postgres]
-user="postgres"
-password="123"
-host='localhost'
+user=postgres
+password=123
+host=localhost
 port=5432
-database='postgres'
+database=postgres
+
+[logging]
+file=dolly-zoom-logs/dolly.log
+max_file_size=10
+backup_count=100

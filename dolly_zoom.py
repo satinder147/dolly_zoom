@@ -1,5 +1,4 @@
 import cv2
-import logging
 import numpy as np
 from tqdm import tqdm
 import time
@@ -8,13 +7,13 @@ import time
 class Track:
     def __init__(self, first_frame, box):
         frame = first_frame
-        cv2.namedWindow("select the bounding box")
-        box = cv2.selectROI("select the bounding box", frame)
-        cv2.imshow("select the bounding box", frame)
-        print(type(box))
-        print(type(box[0]), type(box[1]), type(box[2]), type(box[3]))
+        # cv2.namedWindow("select the bounding box")
+        # box = cv2.selectROI("select the bounding box", frame)
+        # cv2.imshow("select the bounding box", frame)
+        # print(type(box))
+        # print(type(box[0]), type(box[1]), type(box[2]), type(box[3]))
         self.x, self.y, self.w, self.h = box
-        print(self.x, self.y, self.w, self.h)
+        # print(self.x, self.y, self.w, self.h)
         self.tracker = cv2.TrackerCSRT_create()
         self.tracker.init(frame, tuple(box))
         self.initial = box[2] * box[3]
@@ -25,7 +24,7 @@ class Track:
         x, y, w, h = box
         x, y, w, h = int(x), int(y), int(w), int(h)
         self.ind += 1
-        frame = cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 2)
+        # frame = cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 2)
         center_point = [x + w // 2, y + h // 2]
         # frame = cv2.circle(frame, (center_point[0], center_point[1]), 5, (255, 0, 0))
         # cv2.imshow("frame", frame)
