@@ -1,13 +1,32 @@
 import os
-from flask import Flask, render_template, request, redirect, url_for
 import uuid
-from datetime import datetime
 import json
+import subprocess
+from datetime import datetime
+
+import configparser
 from redis import Redis
+from flask import Flask, request, abort
+
 from utils import S3Utils, SQSUtils, DBUtils
 
 redis_db, s3_utils, sqs_utils, db_utils = Redis(), S3Utils(), SQSUtils(), DBUtils
 app = Flask(__name__)
+app.config['MAX_CONTENT_LENGTH'] = int(configparser['server']['max_file_size']) * 1024 * 1024
+config = configparser.ConfigParser()
+config.read('config')
+
+
+def video_validator(file_name):
+    """Returns true/false. Video name should not have space in between."""
+    command = f"file -i {file_name} | grep video"
+    popen = subprocess.Popen(["bash", "-c", command], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    out, err = popen.communicate()
+    popen.kill()
+    out, err = out.decode('UTF-8'), err.decode('UTF-8')
+    if err or not out:
+        return False
+    return True
 
 
 @app.route('/callback', methods=['POST'])
@@ -30,7 +49,7 @@ def callback():
     else:
         presigned_s3_path = 'failed'
     # After call back user has 24 hours to download the video
-    redis_db.set(request_id, presigned_s3_path, ex=86400)
+    redis_db.set(request_id, presigned_s3_path, ex=int(config['presigned_url']['expiry']))
     return 'success'
 
 
@@ -59,18 +78,27 @@ def get_video():
 
 @app.route('/upload', methods=['POST'])
 def upload_video():
+    """
+    Check if the video itself, it is not of greater size.
+    :return:
+    """
     request_id = str(int(datetime.utcnow().timestamp())) + uuid.uuid4().hex[:22]
     uploaded_file = request.files['video']
     x, y, w, h = request.form['x'], request.form['y'], request.form['width'], request.form['height']
     skip_frames = request.form['skip_frames']
     file_name = uploaded_file.filename
-    if file_name != '':
-        uploaded_file.save(file_name)
+    if len(file_name.split('.')) != 2:
+        abort(400)
+    _, ext = file_name.split('.')
+    random_file_name = str(uuid.uuid4().hex) + ext
+    uploaded_file.save(random_file_name)
+    if not video_validator(random_file_name):
+        abort(415)
     # Add the request id to redis.
     redis_db.set(request_id, 'processing')
     # Upload video to s3
-    upload_path = s3_utils.upload_file(file_name, is_processed=False)
-    os.remove(file_name)
+    upload_path = s3_utils.upload_file(random_file_name, is_processed=False)
+    os.remove(random_file_name)
     # Add message to queue
     message = {
         'request_id': request_id,
@@ -90,4 +118,6 @@ def upload_video():
 
 
 if __name__ == '__main__':
-    app.run(host='localhost', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=int(config['server']['port']))
+
+

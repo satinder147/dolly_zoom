@@ -8,17 +8,20 @@ from datetime import datetime
 from botocore.exceptions import EndpointConnectionError
 call_back_url = "http://localhost:5000/callback"
 
+logger = logging.getLogger(__name__)
+
 
 def main(sqs_utils, s3_utils):
     while 1:
         try:
             receipt_handler, message = sqs_utils.get_message_from_queue()
         except EndpointConnectionError:
-            print("No internet")
+            logger.warning("No internet, waiting for %s seconds and again trying", 5)
+            time.sleep(5)
             continue
 
         if not receipt_handler:
-            print("No new message. Sleep for 5 seconds..........")
+            logger.info("No new message. Sleep for 5 seconds..........")
             time.sleep(5)
             continue
         try:
@@ -40,7 +43,6 @@ def main(sqs_utils, s3_utils):
             sqs_utils.delete_message(receipt_handler)
             call_back['status'] = 'success'
             call_back['video_key'] = video_key
-            print(call_back)
         except Exception as e:
             logging.info("failed to process video")
             logging.exception(e)
@@ -54,9 +56,9 @@ def main(sqs_utils, s3_utils):
             current_time = datetime.utcnow()
             total_time = (current_time - start_time).seconds
             call_back['total_time'] = total_time
-            print(call_back)
+            logger.info(call_back)
             r = requests.post(call_back_url, call_back)
-            print("status {}".format(r.status_code))
+            logger("callback status {}".format(r.status_code))
             logging.info("==============================================")
 
 
@@ -67,7 +69,7 @@ if __name__ == "__main__":
             s3_util = S3Utils()
             break
         except EndpointConnectionError as error:
-            print("no internet")
+            logger.info("no internet")
 
     main(sqs_util, s3_util)
 

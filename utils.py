@@ -4,14 +4,19 @@ import boto3
 import logging
 from datetime import datetime
 
+import configparser
 from sqlalchemy import create_engine
+
+config = configparser.ConfigParser()
+config.read('config')
 
 
 class SQSUtils:
     def __init__(self):
-        os.environ["BOTO_CONFIG"] = "aws_config"   # Find a fix for this.
-        region = "ap-south-1"
-        queue_name = 'sauider-dolly-zoom'
+        # os.environ["BOTO_CONFIG"] = "aws_config"   # Find a fix for this.
+        region = config['sqs']['region']
+        queue_name = config['sqs']['queue_name']
+        self.visibility_timeout = config['sqs']['visibility_timeout']
         self.sqs_client = boto3.client('sqs', region_name=region)
         sqs_resource_handle = boto3.resource('sqs', region_name=region)
         queue = sqs_resource_handle.get_queue_by_name(QueueName=queue_name)
@@ -29,7 +34,7 @@ class SQSUtils:
     def get_message_from_queue(self):
         """Receive message from queue"""
         msg = self.sqs_client.receive_message(QueueUrl=self.queue_url, MaxNumberOfMessages=1,
-                                              VisibilityTimeout=600)
+                                              VisibilityTimeout=self.visibility_timeout)
         if 'Messages' in msg:
             msg = msg['Messages'][0]
             # TODO: compute the md5 of message to check if there is some problem with the message.
@@ -46,7 +51,7 @@ class SQSUtils:
 
 class S3Utils:
     def __init__(self):
-        self.s3_bucket = 'sauider-dolly-zoom'
+        self.s3_bucket = config['s3']['bucket_name']
         self.s3_client = boto3.client('s3')
         self.video_upload_path_base = 'vertigo_effect/{}/{}/{}'
 
@@ -71,7 +76,7 @@ class S3Utils:
     def get_presigned_url(self, file_key):
         response = self.s3_client.generate_presigned_url(
             'get_object',
-            ExpiresIn=86400,
+            ExpiresIn=config['presigned_url']['expiry'],
             Params=dict(
                 Bucket=self.s3_bucket,
                 Key=file_key,
@@ -83,13 +88,7 @@ class S3Utils:
 
 class DBUtils:
     def __init__(self):
-        database = {
-            'user': 'postgres',
-            'password': '123',
-            'host': 'localhost',
-            'port': 5432,
-            'database': 'postgres'
-        }
+        database = dict(config['postgres'])
         conn_str = 'postgresql://{user}:{password}@{host}:{port}/{database}'
         self.engine = create_engine(conn_str.format(**database), echo=False)
 
@@ -115,3 +114,6 @@ if __name__ == '__main__':
     # obj.delete_message(receipt_handle)
     # print("deleted message")
 
+    """
+    nginx, supervisor, logging, automatic device startup, database addition, bash script to setup the machine., credentials storage.   
+    """
