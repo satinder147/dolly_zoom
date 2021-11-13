@@ -10,11 +10,11 @@ from flask import Flask, request, abort
 
 from utils import S3Utils, SQSUtils, DBUtils
 
-redis_db, s3_utils, sqs_utils, db_utils = Redis(), S3Utils(), SQSUtils(), DBUtils
-app = Flask(__name__)
-app.config['MAX_CONTENT_LENGTH'] = int(configparser['server']['max_file_size']) * 1024 * 1024
 config = configparser.ConfigParser()
 config.read('config')
+redis_db, s3_utils, sqs_utils, db_utils = Redis(), S3Utils(), SQSUtils(), DBUtils
+app = Flask(__name__)
+app.config['MAX_CONTENT_LENGTH'] = int(config['server']['max_file_size']) * 1024 * 1024
 
 
 def video_validator(file_name):
