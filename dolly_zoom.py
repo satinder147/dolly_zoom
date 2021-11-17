@@ -1,7 +1,7 @@
+import time
+
 import cv2
 import numpy as np
-from tqdm import tqdm
-import time
 
 
 class Track:
@@ -11,7 +11,7 @@ class Track:
         # box = cv2.selectROI("select the bounding box", frame)
         # cv2.imshow("select the bounding box", frame)
         # print(type(box))
-        # print(type(box[0]), type(box[1]), type(box[2]), type(box[3]))
+        # print(box)
         self.x, self.y, self.w, self.h = box
         # print(self.x, self.y, self.w, self.h)
         self.tracker = cv2.TrackerCSRT_create()
@@ -36,9 +36,6 @@ class DollyZoom:
 
     def __init__(self, video_path, skip_frames=0):
 
-        # Video resolution must be at least 1080p
-        out_res_mapping = {3840: 1920, 2560: 1920, 1920: 1280}
-        width_height_mapping = {3840: 2160, 2560: 1440, 1920: 1080, 1280: 720}
         self.smoothing_radius = 150
         self.video_path = video_path
         self.cap = cv2.VideoCapture(self.video_path)
@@ -51,6 +48,7 @@ class DollyZoom:
         self.out_path = video_path.split('.')[0] + '_stabilized' + '.mp4'
         self.out_resolution = (1280, 720)
         self.processing_resolution = (1280, 720)
+        self.max_zoom = 3
 
     def __enter__(self):
         return self
@@ -58,7 +56,7 @@ class DollyZoom:
     def __exit__(self, exc_type, exc_val, exc_tb):
         pass
 
-    def process(self, box):
+    def process(self, box=None):
 
         # We need to find a code that does some lossy compression.
         out = cv2.VideoWriter(self.out_path, cv2.VideoWriter_fourcc(*'MJPG'), self.fps, self.out_resolution)
@@ -80,7 +78,7 @@ class DollyZoom:
         transforms = np.zeros((self.n_frames, 3), np.float32)
         tracker = Track(prev_gray, box)
         zoom_details = []
-        for i in tqdm(range(1, self.n_frames - 1)):
+        for i in range(1, self.n_frames - 1):
             # Detect feature points in previous frame
             prev_pts = cv2.goodFeaturesToTrack(prev_gray,
                                                maxCorners=200,
@@ -128,7 +126,7 @@ class DollyZoom:
         s = time.time()
         rate = 2
         prev = None
-        for i in tqdm(range(1, self.n_frames - 1)):
+        for i in range(1, self.n_frames - 1):
             frame = frames[i]
             # frame = cv2.resize(frame, (1920, 1080))
             # Extract transformations from the new transformation array
@@ -149,7 +147,7 @@ class DollyZoom:
             if zoom >= 0:
                 # print("within")
                 updated_scale = 1 + zoom / 10
-                if updated_scale > 3:
+                if updated_scale > self.max_zoom:
                     break
                 zoom_area = ((centers[i-1][0] / self.processing_resolution[0]) * self.out_resolution[0],
                              (centers[i-1][1] / self.processing_resolution[1]) * self.out_resolution[1])
@@ -205,7 +203,7 @@ class DollyZoom:
 
 
 if __name__ == '__main__':
-    obj = DollyZoom('media/VID_20211018_180515.mp4', 0)
+    obj = DollyZoom('media/C0002.MP4', 0)
     obj.process([1, 2, 3, 4])
 
 

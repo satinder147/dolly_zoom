@@ -121,5 +121,5 @@ if __name__ == '__main__':
 
     """
     nginx, supervisor, logging, automatic device startup, database addition, bash script to 
-    setup the machine., credentials storage.   
+    setup the machine., credentials storage, ermove tqdm   
     """

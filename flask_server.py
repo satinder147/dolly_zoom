@@ -19,7 +19,7 @@ app.config['MAX_CONTENT_LENGTH'] = int(config['server']['max_file_size']) * 1024
 
 def video_validator(file_name):
     """Returns true/false. Video name should not have space in between."""
-    command = f"file -i {file_name} | grep video"
+    command = f"exiftool {file_name} | grep 'Track Duration'"
     popen = subprocess.Popen(["bash", "-c", command], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = popen.communicate()
     popen.kill()
