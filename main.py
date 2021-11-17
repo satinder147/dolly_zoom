@@ -60,7 +60,7 @@ def main(sqs_utils, s3_utils):
             total_time = (current_time - start_time).seconds
             call_back['total_time'] = total_time
             logger.info(call_back)
-            r = requests.post(call_back_url, call_back)
+            r = requests.post(call_back_url, json=call_back)
             logger.info("callback status {}".format(r.status_code))
             logger.info("==============================================")
 

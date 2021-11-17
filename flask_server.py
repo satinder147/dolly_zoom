@@ -41,15 +41,18 @@ def callback():
         'request_id': uuid
     }
     """
-    request_id, status = request.form['request_id'], request.form['status']
+    data = request.get_json(force=True)
+
+    request_id, status = data['request_id'], data['status']
     # This information will be stored in a redis database, each entry is store for at max 24 hours
     # in the redis db, post which it is deleted.
     if status == 'success':
-        presigned_s3_path = s3_utils.get_presigned_url(request.form['video_key'])
+        presigned_s3_path = s3_utils.get_presigned_url(data['video_key'])
     else:
         presigned_s3_path = 'failed'
     # After call back user has 24 hours to download the video
     redis_db.set(request_id, presigned_s3_path, ex=int(config['presigned_url']['expiry']))
+
     return 'success'
 
 

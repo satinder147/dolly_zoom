@@ -3,7 +3,7 @@ port=5005
 max_file_size=200
 
 [presigned_url]
-expiry=24*60*60
+expiry=84600
 
 [sqs]
 region=ap-south-1
