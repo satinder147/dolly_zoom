@@ -7,6 +7,7 @@ from datetime import datetime
 import configparser
 from sqlalchemy import create_engine
 
+from botocore.client import Config
 from logging_init import initialize_logging
 
 logger = logging.getLogger(__name__)
@@ -57,7 +58,10 @@ class SQSUtils:
 class S3Utils:
     def __init__(self):
         self.s3_bucket = config['s3']['bucket_name']
-        self.s3_client = boto3.client('s3')
+        self.s3_client = boto3.client('s3',
+                                      config=Config(signature_version='s3v4'),
+                                      region_name='ap-south-1')
+
         self.video_upload_path_base = 'vertigo_effect/{}/{}/{}'
 
     def upload_file(self, local_file, is_processed=False):
