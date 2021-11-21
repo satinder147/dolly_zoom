@@ -45,7 +45,7 @@ def main(sqs_utils, s3_utils):
             video_key = s3_utils.upload_file(processed_video_path, is_processed=True)
             sqs_utils.delete_message(receipt_handler)
             call_back['status'] = 'success'
-            call_back['video_key'] = video_key
+            call_back['s3_path'] = s3_utils.get_presigned_url(video_key)
         except Exception as e:
             logger.info("failed to process video")
             logger.exception(e)
