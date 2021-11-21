@@ -14,11 +14,11 @@ visibility_timeout=300
 bucket_name=sauider-dolly-zoom
 
 [postgres]
-user=postgres
+user=admin
 password=123
 host=localhost
 port=5432
-database=postgres
+database=dolly_zoom
 
 [logging]
 file=dolly-zoom-logs/dolly.log

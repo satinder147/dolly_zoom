@@ -28,6 +28,7 @@ def main(sqs_utils, s3_utils):
             time.sleep(5)
             continue
         try:
+            logger.info('received request')
             processed_video_path, local_file = None, None
             request_id = message['request_id']
             video_key = message['video_key']
