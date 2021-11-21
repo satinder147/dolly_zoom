@@ -121,6 +121,7 @@ def upload_video():
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=int(config['server']['port']))
+    app.run(host='0.0.0.0', port=int(config['server']['port']),
+            ssl_context=('/home/ubuntu/cert.pem', '/home/ubuntu/key.pem'))
 
 
