@@ -9,7 +9,7 @@ from botocore.exceptions import EndpointConnectionError
 
 from logging_init import initialize_logging
 
-call_back_url = "http://13.233.212.77:5005/callback"
+call_back_url = "https://13.233.212.77:5005/callback"
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +60,7 @@ def main(sqs_utils, s3_utils):
             total_time = (current_time - start_time).seconds
             call_back['total_time'] = total_time
             logger.info(call_back)
-            r = requests.post(call_back_url, json=call_back)
+            r = requests.post(call_back_url, json=call_back, verify=False)
             logger.info("callback status {}".format(r.status_code))
             logger.info("==============================================")
 
