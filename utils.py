@@ -89,8 +89,7 @@ class S3Utils:
             Params=dict(
                 Bucket=self.s3_bucket,
                 Key=file_key,
-            ),
-            region_name='ap-south-1'
+            )
         )
         # what if file doesn't exist
         return response

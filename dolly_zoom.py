@@ -46,9 +46,19 @@ class DollyZoom:
         self.h = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         self.fps = self.cap.get(cv2.CAP_PROP_FPS)
         self.out_path = video_path.split('.')[0] + '_stabilized' + '.mp4'
-        self.out_resolution = (1280, 720)
-        self.processing_resolution = (1280, 720)
-        self.max_zoom = 3
+        """
+        Conditions:
+        1. Resolution should be atleast 720p
+        2. Should we pass another parameter to say if user can compromise with quality. 
+        """
+        if self.w > self.h:
+            # landscape
+            self.out_resolution = (1280, 720)
+            self.processing_resolution = (1280, 720)
+        else:
+            self.out_resolution = (720, 1280)
+            self.processing_resolution = (720, 1280)
+        self.max_zoom = self.w / self.out_resolution[0]  # Quality vs zoom compromise.
 
     def __enter__(self):
         return self

@@ -17,6 +17,11 @@ app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = int(config['server']['max_file_size']) * 1024 * 1024
 
 
+@app.route('/')
+def test():
+    return 'hello, world'
+
+
 def video_validator(file_name):
     """Returns true/false. Video name should not have space in between."""
     command = f"exiftool {file_name} | grep 'Track Duration'"
@@ -62,8 +67,8 @@ def get_video():
     """
     If request is not in redis, this mean it is more than 24 hours since we recieved the request.
     else if there is a dummy value means not processed. 
-    
-    
+
+
     UI Show video with current state(processed/not).     
     """
     result = redis_db.get(request_id)
@@ -71,12 +76,13 @@ def get_video():
         # The video is no longer there.
         return json.dumps({'status': 'video_removed'})
     else:
+        result = result.decode('UTF-8')
         if result == 'processing':
             return json.dumps({'status': 'processing'})
         elif result == 'failed':
             return json.dumps({'status': 'failed'})
         else:
-            return json.dumps({'status': 'processed', 'url': result.decode('UTF-8')})
+            return json.dumps({'status': 'processed', 'url': result})
 
 
 @app.route('/upload', methods=['POST'])
@@ -87,6 +93,7 @@ def upload_video():
     """
     request_id = str(int(datetime.utcnow().timestamp())) + uuid.uuid4().hex[:22]
     uploaded_file = request.files['video']
+
     x, y, w, h = request.form['x'], request.form['y'], request.form['width'], request.form['height']
     skip_frames = request.form['skip_frames']
     file_name = uploaded_file.filename
@@ -114,8 +121,7 @@ def upload_video():
 
     return json.dumps(
         {
-            'request_id': request_id,
-            'return_code': 200
+            'request_id': request_id
         }
     )
 
@@ -123,5 +129,4 @@ def upload_video():
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(config['server']['port']),
             ssl_context=('/home/ubuntu/cert.pem', '/home/ubuntu/key.pem'))
-
-
+    # app.run(host='0.0.0.0', port=int(config['server']['port']))
