@@ -7,11 +7,11 @@ expiry=84600
 
 [sqs]
 region=ap-south-1
-queue_name=sauider-dolly-zoom
+queue_name=dolly-zoom
 visibility_timeout=300
 
 [s3]
-bucket_name=sauider-dolly-zoom
+bucket_name=dolly-zoom
 
 [postgres]
 user=admin

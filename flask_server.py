@@ -63,7 +63,7 @@ def callback():
 
 @app.route('/get_video', methods=['POST'])
 def get_video():
-    request_id = request.form['request_id']
+    request_id = request.get_json()['request_id']
     """
     If request is not in redis, this mean it is more than 24 hours since we recieved the request.
     else if there is a dummy value means not processed. 
@@ -92,10 +92,12 @@ def upload_video():
     :return:
     """
     request_id = str(int(datetime.utcnow().timestamp())) + uuid.uuid4().hex[:22]
-    uploaded_file = request.files['video']
-
+    #uploaded_file = request.files['video']
+    print(request.form)
     x, y, w, h = request.form['x'], request.form['y'], request.form['width'], request.form['height']
+    
     skip_frames = request.form['skip_frames']
+    uploaded_file = request.files['video']
     file_name = uploaded_file.filename
     if len(file_name.split('.')) != 2:
         abort(400)
@@ -128,5 +130,5 @@ def upload_video():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(config['server']['port']),
-            ssl_context=('/home/ubuntu/cert.pem', '/home/ubuntu/key.pem'))
+            ssl_context=('/home/ubuntu/dolly_zoom/letsencrypt/live/satindersh.com/cert.pem', '/home/ubuntu/dolly_zoom/letsencrypt/live/satindersh.com/privkey.pem'))
     # app.run(host='0.0.0.0', port=int(config['server']['port']))
